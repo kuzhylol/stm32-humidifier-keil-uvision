@@ -117,7 +117,7 @@ void hs_wakeup(void)
 	
 	i2c_send_data(HUM_SENSOR_I2C_ADDR);
 	
-	udelay(100);
+	udelay(90);
 	
 	i2c_stop();
 }

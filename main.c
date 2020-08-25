@@ -31,8 +31,7 @@ int main(void) {
 
 	hs_wakeup();
 	hs_write();
-	udelay(200);
-	hs_read();
+	//hs_read();
 	//h_sensor_read(0x3);
 	while(1) {
 		//if (true == wt_flag) {
