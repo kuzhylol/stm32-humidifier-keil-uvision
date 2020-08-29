@@ -87,11 +87,13 @@ static inline void i2c_start(void)
 
 	/* Wait until Start bit completed */
 	while (!(I2C1->SR1 & I2C_SR1_SB));
+	(void) I2C1->SR1;
 }
 
 static inline void i2c_stop(void)
 {
 	I2C1->CR1 |= I2C_CR1_STOP;
+	udelay(160);
 }
 
 static inline void i2c_send_data(uint8_t word)
@@ -132,7 +134,6 @@ static inline void i2c_set_addr(void)
 bool hs_write(void)
 {
 		i2c_start();
-		//(void) I2C1->SR1;
 
 		i2c_set_addr();
 
@@ -148,7 +149,11 @@ bool hs_write(void)
 void hs_read(void)
 {
 		uint8_t byte;
+		
 		i2c_start();
+
+			I2C1->SR2 = ~I2C_SR2_MSL;
+
 	
 		i2c_set_read();
 	
