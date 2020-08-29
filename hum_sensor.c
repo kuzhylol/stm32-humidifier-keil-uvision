@@ -61,7 +61,7 @@ static bool h_sensor_i2c_init(void)
 	/*  Peripheral enable */
 	I2C1->CR1 |= (I2C_CR1_PE | I2C_CR1_ACK);
 		
-	I2C1->CR2 |= (I2C_CR2_ITEVTEN);
+	I2C1->CR2 |= (I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN);
 	return true;
 }
 
