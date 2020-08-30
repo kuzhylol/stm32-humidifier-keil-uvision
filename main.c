@@ -10,6 +10,9 @@ extern volatile bool ut_flag, wt_flag;
 
 int main(void) {
 
+	uint8_t cnt = 8;
+	static uint8_t data[8];
+	
 	stm32f11re_init();
 	__enable_irq();
 
@@ -31,7 +34,7 @@ int main(void) {
 
 	hs_wakeup();
 	hs_write();
-	//hs_read();
+	hs_read(cnt, data);
 	//h_sensor_read(0x3);
 	while(1) {
 		//if (true == wt_flag) {
