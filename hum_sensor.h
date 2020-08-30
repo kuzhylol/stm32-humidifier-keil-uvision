@@ -7,5 +7,5 @@
 
 bool hs_init(void);
 void hs_wakeup(void);
-void hs_read(void);
+void hs_read(uint8_t count, uint8_t *data);
 bool hs_write(void);

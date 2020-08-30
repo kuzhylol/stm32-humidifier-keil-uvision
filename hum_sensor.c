@@ -146,17 +146,15 @@ bool hs_write(void)
 		i2c_stop();
 }
 
-void hs_read(void)
-{
-		uint8_t byte;
-		
+void hs_read(uint8_t count, uint8_t *data)
+{		
 		i2c_start();
-
-			I2C1->SR2 = ~I2C_SR2_MSL;
-
 	
 		i2c_set_read();
 	
-
+		for(uint8_t i = 0; i < count; i++) {
+			while(!(I2C1->SR1 & I2C_SR1_RXNE));
+				*(data++) = I2C1->DR;
+		}
 		i2c_stop();
 }
