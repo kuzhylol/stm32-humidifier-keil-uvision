@@ -2,8 +2,6 @@
 #include <stdbool.h>
 #include "stm32f411xe.h"
 
-#define PZ_RCC_BASE 								RCC_BASE
-#define	PZ_GPIO_BASE 							GPIOC_BASE
 #define PZ_RCC_BUS 								AHB1ENR
 #define	PZ_RCC_AHB1ENR_GPIOCEN 		RCC_AHB1ENR_GPIOCEN
 #define	PZ_PIN 										8;
