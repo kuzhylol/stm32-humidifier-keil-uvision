@@ -169,37 +169,125 @@ static void hs_wakeup(void)
 	i2c_stop();
 }
 
-static inline void i2c_set_addr(void)
+static inline void i2c_wr_addr(void)
 {
 		I2C1->DR = HUM_SENSOR_I2C_ADDR;
-		while(!(I2C1->SR1 & I2C_SR1_ADDR));
+		while(!(I2C1->SR1 & I2C_SR1_ADDR)) {
+			__NOP();
+		}
 		(void) I2C1->SR2;
 }
 
-bool hs_write(void)
+static void i2c_fetch_data_reg(uint8_t *flow_buff, uint8_t npkg) 
 {
-		i2c_start();
-
-		i2c_set_addr();
-
-		i2c_send_data(0x03);
-
-		i2c_send_data(0x00);
-
-		i2c_send_data(0x04);
-
-		i2c_stop();
+	for(unsigned int i = 0; i < npkg; i++) {
+		i2c_rx_wait();
+		flow_buff[i] = (uint8_t)I2C1->DR;
+	}
 }
 
-void hs_read(uint8_t count, uint8_t *data)
-{		
-		i2c_start();
+static void read_package(uint8_t *buff, uint8_t n)
+{
+	if (NULL == buff) {
+		return;
+	}
+	i2c_enable();
+
+	hs_wakeup();
 	
-		i2c_set_read();
+	i2c_start();
+
+	i2c_wr_addr();
+	i2c_send_data(HS_I2C_READ_REG_DATA);
+	i2c_send_data(0x00); // Start address
+	i2c_send_data(0x04); // 4 registers to read
+
+	i2c_stop();
+
+	i2c_start();
+
+	i2c_rd_addr();
 	
-		for(uint8_t i = 0; i < count; i++) {
-			while(!(I2C1->SR1 & I2C_SR1_RXNE));
-				*(data++) = I2C1->DR;
+	i2c_fetch_data_reg(buff, n);
+
+	i2c_stop();
+	
+	i2c_disable();
+}
+
+static uint16_t crc16(uint8_t *ptr, uint8_t len)
+{
+	uint16_t crc = 0xFFFF;
+	uint8_t i;
+	while(len--) {
+		crc ^= *(ptr++);
+		for(i = 0 ; i < 8 ; i++) {
+			if(crc & 0x01) {
+				crc >>= 1;
+				crc ^= 0xA001;
+			} else {
+				crc >>= 1;
+			}
 		}
-		i2c_stop();
+	}
+	return crc;
 }
+
+static uint16_t concat_bytes(uint8_t a, uint8_t b)
+{
+	return (uint16_t)((a) | (b << 8));
+}
+
+static inline bool crc_cmp(struct hum_temp_package *package)
+{
+	uint8_t pkg_valid_data[]= {
+		package->func_code,
+		package->size,
+		package->h_high,
+		package->h_low,
+		package->t_high,
+		package->t_low,
+	};
+	
+	/* store 8 bit high and 8 bit low at 16 bit crc variable */
+	uint16_t crc_fetched = 	concat_bytes(package->crc_high, package->crc_low);
+	uint16_t crc_computed = crc16(pkg_valid_data, sizeof(pkg_valid_data));
+	
+	bool ret = (crc_computed == crc_fetched) ? true : false;
+	
+	return ret;
+}
+
+static int get_hum_temp(unsigned int *hum_temp)
+{
+
+	if (NULL == hum_temp) {
+		return -1;
+	}
+	
+	uint8_t pkg_buff[8];
+	read_package(pkg_buff, (sizeof(pkg_buff)));
+	
+	struct hum_temp_package *parsed = (struct hum_temp_package *)pkg_buff;
+
+	if (false == crc_cmp(parsed)) {
+		return -2;
+	}
+	
+	unsigned int humidity = concat_bytes(parsed->h_low, parsed->h_high);//humidity_deserialize(parsed);
+	unsigned int temperature = concat_bytes(parsed->t_low, parsed->t_high);//temperature_deserialize(parsed);
+
+	hum_temp[0] = humidity;	hum_temp[1] = temperature;
+	
+	return 0;
+}
+
+void hs_init(HumSensor *chip)
+{
+	rcc_gpio_init();
+	i2c_init();
+	
+	chip->hs_get_hum_temp = &get_hum_temp;
+}
+
+
