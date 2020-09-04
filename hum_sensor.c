@@ -137,6 +137,8 @@ static inline void i2c_start(void)
 
 static inline void i2c_stop(void)
 {
+	I2C1->CR1 &= ~I2C_CR1_ACK; // Send NACK
+
 	I2C1->CR1 |= I2C_CR1_STOP;
 	udelay(160);
 }
@@ -144,21 +146,19 @@ static inline void i2c_stop(void)
 static inline void i2c_send_data(uint8_t word)
 {
 	I2C1->DR = word;
-//	while (!(I2C1->SR1 & I2C_SR1_BTF));
 	udelay(8);
 
 	(void) I2C1->SR1;
 }
 
-static inline void i2c_set_read(void)
+static inline void i2c_rd_addr(void)
 {
+	I2C1->CR1 |= I2C_CR1_ACK; // ACK Master receiver
 	I2C1->DR = HUM_SENSOR_I2C_ADDR+R;
-//	while (!(I2C1->SR1 & I2C_SR1_BTF));
 	udelay(6);
-
 }
 
-void hs_wakeup(void)
+static void hs_wakeup(void)
 {
 	i2c_start();
 	
