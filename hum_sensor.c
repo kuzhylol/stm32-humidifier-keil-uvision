@@ -25,56 +25,88 @@ static void rcc_gpio_init(void)
 	gpio_init();
 }
 
-	/* 0100: AF4 - I2C1-3 */
-	GPIOB->AFR[1] |= GPIO_AFRH_AFSEL9_2 | GPIO_AFRH_AFSEL8_2;
-	
-	return true;
+static inline void i2c_rcc_init(void)
+{
+	hs_regs.rcc_base->HS_I2C_RCC_BUS |= HS_RCC_APBENR_I2CEN;
 }
 
-static bool h_sensor_i2c_init(void)
+static inline void i2c_reset(void)
 {
-	RCC->APB1ENR |= RCC_APB1ENR_I2C1EN;
+	hs_regs.i2c1_base->CR1 |= HS_I2C_SWRST;
+	__NOP();
+	hs_regs.i2c1_base->CR1 &= ~HS_I2C_SWRST;
+}
 
-	I2C1->CR1 |= I2C_CR1_SWRST;
-	I2C1->CR1 &= ~I2C_CR1_SWRST;
-	/*  Peripheral disable */
-	I2C1->CR2 &= ~I2C_CR1_PE;
-	
-	/*  I2C mode */
-	I2C1->CR2 &= ~I2C_CR1_SMBUS;
-	
+static inline void hs_i2c_set_mode(void)
+{
+	hs_regs.i2c1_base->CR2 &= ~HS_I2C_SMBUS;
+}
+
+static inline void i2c_set_freq(void)
+{
 	/* duty cycle 50% */
-	I2C1->CCR &= ~I2C_CCR_DUTY;
+	hs_regs.i2c1_base->CCR &= ~HS_I2C_DUTY;
+	hs_regs.i2c1_base->CR2 &= ~HS_I2C_CR2_FREQ;
 	
 	/*  Peripheral clock frequency - 48 MHz*/
-	I2C1->CR2 &= ~I2C_CR2_FREQ;
-	I2C1->CR2 |= (uint32_t)MCU_CLOCK_MHZ;
-	
-  I2C1->CCR &= ~I2C_CCR_CCR;
+	hs_regs.i2c1_base->CR2 |= MCU_CLOCK_MHZ;
+
+	hs_regs.i2c1_base->CCR &= ~HS_I2C_CCR;
 
 	/* SM mode */
-	I2C1->CCR &= ~I2C_CCR_FS;
-	
+	hs_regs.i2c1_base->CCR &= ~HS_I2C_FS;
+
+		hs_regs.i2c1_base->TRISE = (uint32_t) 0;
 
 	/* Tscl/2Tpclk = 10us(SM)/(2*(1/48Mhz)) - 100kHz SM mode*/
-	I2C1->CCR |= 240; 
+	hs_regs.i2c1_base->CCR |= HS_I2C_CCR_VAL;
 	
+	hs_regs.i2c1_base->TRISE = (uint32_t) 0;
 	/* (Trmax / Tpclk) + 1 = (1000nS (SM) / 1/48Mhz) + 1 = 48 */
-	I2C1->TRISE |= 49;
+	hs_regs.i2c1_base->TRISE |= HS_I2C_TRISE_VAL;
 	
-	/*  Peripheral enable */
-	I2C1->CR1 |= (I2C_CR1_PE | I2C_CR1_ACK);
-		
-	I2C1->CR2 |= (I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN);
-	return true;
 }
 
-bool hs_init(void)
+static inline void i2c_ack_enable(void)
 {
-	h_sensor_gpio_init();
-	h_sensor_i2c_init();
+	/*  Auto ACK enable */
+	I2C1->CR1 |= (I2C_CR1_ACK);
+}
 
-	return true;
+static inline void i2c_ack_disable(void)
+{
+	/*  Auto ACK disable */
+	I2C1->CR1 &= ~I2C_CR1_ACK;
+}
+
+static inline void i2c_enable(void)
+{
+	hs_regs.i2c1_base->CR1 |= HS_I2C_PE;
+}
+
+static inline void i2c_disable(void)
+{	
+	hs_regs.i2c1_base->CR1 &= ~HS_I2C_PE;
+}
+
+static inline void i2c_int_enable(void)
+{
+	hs_regs.i2c1_base->CR2 |= HS_I2C_EVENT_INTERRUPT;
+}
+
+static inline void i2c_int_disable(void)
+{
+	hs_regs.i2c1_base->CR2 &= ~HS_I2C_EVENT_INTERRUPT;
+}
+
+static void i2c_init(void)
+{
+	i2c_rcc_init();
+	i2c_reset();
+	i2c_disable();
+	hs_i2c_set_mode();
+	i2c_set_freq();
+	i2c_int_enable();
 }
 
 static inline void i2c_busy_wait(void)
