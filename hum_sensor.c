@@ -4,6 +4,7 @@
 #include "hum_sensor.h"
 #include "mcu_init.h"
 #include "systick.h"
+#include <stdlib.h>
 
 static bool h_sensor_gpio_init(void)
 {
@@ -75,18 +76,27 @@ bool hs_init(void)
 
 static inline void i2c_busy_wait(void)
 {
-		while (I2C1->SR2 & I2C_SR2_BUSY);
+		while (I2C1->SR2 & I2C_SR2_BUSY) {
+			__NOP();
+		}
 }
 
+static inline void i2c_rx_wait(void)
+{
+		while(!(I2C1->SR1 & I2C_SR1_RXNE)) {
+			__NOP();
+		}
+}
 static inline void i2c_start(void)
 {
-	//I2C1->SR1 = (uint32_t)0;
 	i2c_busy_wait();
-
+	
 	I2C1->CR1 |= I2C_CR1_START;
 
 	/* Wait until Start bit completed */
-	while (!(I2C1->SR1 & I2C_SR1_SB));
+	while (!(I2C1->SR1 & I2C_SR1_SB)) {
+		__NOP();
+	}
 	(void) I2C1->SR1;
 }
 
