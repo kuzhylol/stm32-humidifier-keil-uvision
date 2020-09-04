@@ -31,8 +31,9 @@
 
 
 #define R	1
-#define W 0
+#define W ~R
 #define HUM_SENSOR_I2C_ADDR 0xB8
+#define HS_I2C_READ_REG_DATA 0x03
 
 bool hs_init(void);
 void hs_wakeup(void);
