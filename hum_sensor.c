@@ -6,21 +6,24 @@
 #include "systick.h"
 #include <stdlib.h>
 
-static bool h_sensor_gpio_init(void)
+static inline void gpio_rcc_init(void)
 {
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN; // SDA
+	hs_regs.rcc_base->HS_GPIO_RCC_BUS |= HS_RCC_AHBENR_GPIOEN;
+}
 
-	/* Alternate function mode */
-	GPIOB->MODER |= GPIO_MODER_MODER8_1 | GPIO_MODER_MODER9_1;
-	
-	/* Output open-drain */
-	GPIOB->OTYPER |= GPIO_OTYPER_OT8 | GPIO_OTYPER_OT9;
-	
-	GPIOB->OSPEEDR |= GPIO_OSPEEDER_OSPEEDR8_0 | GPIO_OSPEEDER_OSPEEDR8_1 | 
-										GPIO_OSPEEDER_OSPEEDR9_0 | GPIO_OSPEEDER_OSPEEDR9_1;
+static inline void gpio_init(void)
+{
+	hs_regs.gpio_base->MODER 		|= 	HS_GPIO_MODER;
+	hs_regs.gpio_base->OTYPER 	|= 	HS_GPIO_TYPER;
+	hs_regs.gpio_base->OSPEEDR 	|= 	HS_GPIO_SPEEDR;
+	hs_regs.gpio_base->AFR[1] 	|= 	HS_GPIO_AFR;
+}
 
-	/* Pull-UP */
-	//GPIOB->PUPDR |= GPIO_PUPDR_PUPDR8_0 | GPIO_PUPDR_PUPDR9_0;
+static void rcc_gpio_init(void)
+{
+	gpio_rcc_init();
+	gpio_init();
+}
 
 	/* 0100: AF4 - I2C1-3 */
 	GPIOB->AFR[1] |= GPIO_AFRH_AFSEL9_2 | GPIO_AFRH_AFSEL8_2;
