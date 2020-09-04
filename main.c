@@ -9,10 +9,6 @@
 extern volatile bool ut_flag, wt_flag;
 
 int main(void) {
-
-	uint8_t cnt = 8;
-	static uint8_t data[8];
-	
 	stm32f11re_init();
 	__enable_irq();
 
@@ -27,20 +23,29 @@ int main(void) {
 	
 	utimer.start();
 
-	//wtimer.start();
+	wtimer.start();
 
-	hs_init();
+	HumSensor chip;
+	hs_init(&chip);
+	
 	udelay(100);
 
-	hs_wakeup();
-	hs_write();
-	hs_read(cnt, data);
-	//h_sensor_read(0x3);
+	unsigned int hum_temp[2] = {0};
+	unsigned int hum = 0;
+	unsigned int temp = 0;
+	int ret = 0;
+	
 	while(1) {
-		//if (true == wt_flag) {
-		//	piezo.toggle();
-		//	wt_flag = false;
-		//}
-	}	
+		if (true == wt_flag) {
+			piezo.toggle();
+			ret = chip.hs_get_hum_temp(hum_temp);
+			if (ret > 0) {
+				hum = hum_temp[0];
+				temp = hum_temp[1];
+			}
+			
+			wt_flag = false;
+		}
+	}
 }
 
