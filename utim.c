@@ -78,7 +78,5 @@ void TIM2_IRQHandler(void)
 	if (utim_is_irq()) {
 		utim_clean_irq_flag();
 		ucnt_global++;
-//		ut_flag = true;
 	}
-
 }
