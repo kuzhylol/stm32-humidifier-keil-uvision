@@ -35,7 +35,40 @@
 #define HUM_SENSOR_I2C_ADDR 0xB8
 #define HS_I2C_READ_REG_DATA 0x03
 
-bool hs_init(void);
-void hs_wakeup(void);
-void hs_read(uint8_t count, uint8_t *data);
-bool hs_write(void);
+
+#define HUM_PKG				0
+#define TEMP_PKG			1
+#define HUM_TEMP_PKG	2
+
+struct hum_temp_package{
+	uint8_t func_code;
+	uint8_t size;
+	uint8_t h_high;
+	uint8_t h_low;
+	uint8_t t_high;
+	uint8_t t_low;
+	uint8_t crc_high;
+	uint8_t crc_low;
+};
+
+struct AM2320 {
+	
+	int (*hs_get_hum_temp)(unsigned int *hum_tem);
+	
+};
+
+typedef struct AM2320 HumSensor;
+
+struct hs_i2c_regs {
+	RCC_TypeDef *rcc_base;
+	I2C_TypeDef *i2c1_base;
+	GPIO_TypeDef *gpio_base;
+};
+
+static struct hs_i2c_regs hs_regs = {
+	.rcc_base = RCC,
+	.gpio_base = GPIOB,
+	.i2c1_base = I2C1
+};
+
+void hs_init(HumSensor *chip);
