@@ -33,9 +33,9 @@ static inline void wtim_enable(void)
 
 static inline void wtim_disable(void)
 {
+	NVIC_DisableIRQ(WT_NVIC_IRQ);	
 	wt_regs.timer_base->CR1 &= ~(WT_TIM_CR1_CEN);	
 	wt_regs.timer_base->DIER &= ~(WT_TIM_DIER_UIE);	
-	NVIC_DisableIRQ(WT_NVIC_IRQ);	
 }
 
 static inline void wtim_clean_irq_flag(void)
@@ -55,7 +55,7 @@ static void wtim_start(void)
 
 static void wtim_stop(void)
 {
-	wtim_enable();
+	wtim_disable();
 }
 
 void wtim_init(WideTimer *wt, uint32_t s)
