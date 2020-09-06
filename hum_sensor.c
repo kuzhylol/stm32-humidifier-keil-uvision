@@ -292,24 +292,28 @@ static inline bool crc_check(struct hum_temp_package *package)
 	return ret;
 }
 
-static int get_hum_temp(unsigned int *hum_temp)
+static bool get_hum_temp(unsigned int *hum_temp)
 {
-
 	if (NULL == hum_temp) {
-		return -1;
+		return false;
 	}
 	
 	uint8_t pkg_buff[8];
-	read_package(pkg_buff, (sizeof(pkg_buff)));
+	read_target_package(pkg_buff, (sizeof(pkg_buff)));
 	
 	struct hum_temp_package *parsed = (struct hum_temp_package *)pkg_buff;
 
-	if (false == crc_cmp(parsed)) {
-		return -2;
+	if (false == crc_check(parsed)) {
+		return false;
 	}
 	
-	unsigned int humidity = concat_bytes(parsed->h_low, parsed->h_high);//humidity_deserialize(parsed);
-	unsigned int temperature = concat_bytes(parsed->t_low, parsed->t_high);//temperature_deserialize(parsed);
+	unsigned int humidity = concat_bytes(parsed->h_low, parsed->h_high);
+	unsigned int temperature = concat_bytes(parsed->t_low, parsed->t_high);
+
+	hum_temp[0] = humidity; hum_temp[1] = temperature;
+	
+	return true;
+}
 
 	hum_temp[0] = humidity;	hum_temp[1] = temperature;
 	
