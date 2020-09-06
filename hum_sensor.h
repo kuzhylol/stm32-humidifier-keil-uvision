@@ -51,10 +51,11 @@ struct hum_temp_package{
 	uint8_t crc_low;
 };
 
+
 struct AM2320 {
 	
-	int (*hs_get_hum_temp)(unsigned int *hum_tem);
-	
+	bool (*hs_get_hum_temp)(unsigned int *hum_tem);
+	bool (*probe)(void);
 };
 
 typedef struct AM2320 HumSensor;
