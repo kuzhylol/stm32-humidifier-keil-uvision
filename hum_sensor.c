@@ -56,7 +56,7 @@ static inline void i2c_set_freq(void)
 	/* SM mode */
 	hs_regs.i2c1_base->CCR &= ~HS_I2C_FS;
 
-		hs_regs.i2c1_base->TRISE = (uint32_t) 0;
+	hs_regs.i2c1_base->TRISE = (uint32_t) 0;
 
 	/* Tscl/2Tpclk = 10us(SM)/(2*(1/48Mhz)) - 100kHz SM mode*/
 	hs_regs.i2c1_base->CCR |= HS_I2C_CCR_VAL;
@@ -85,7 +85,7 @@ static inline void i2c_enable(void)
 }
 
 static inline void i2c_disable(void)
-{	
+{
 	hs_regs.i2c1_base->CR1 &= ~HS_I2C_PE;
 }
 
@@ -132,50 +132,47 @@ static inline void i2c_start(void)
 	while (!(I2C1->SR1 & I2C_SR1_SB)) {
 		__NOP();
 	}
-	(void) I2C1->SR1;
+	(void)I2C1->SR1;
 }
 
 static inline void i2c_stop(void)
 {
-	I2C1->CR1 &= ~I2C_CR1_ACK; // Send NACK
-
 	I2C1->CR1 |= I2C_CR1_STOP;
-	udelay(160);
+	utim_udelay(1600);
 }
 
 static inline void i2c_send_data(uint8_t word)
 {
 	I2C1->DR = word;
-	udelay(8);
+	utim_udelay(80);
 
-	(void) I2C1->SR1;
+	(void)I2C1->SR1;
 }
 
 static inline void i2c_rd_addr(void)
 {
-	I2C1->CR1 |= I2C_CR1_ACK; // ACK Master receiver
-	I2C1->DR = HUM_SENSOR_I2C_ADDR+R;
-	udelay(6);
+	I2C1->DR = HS_I2C_ADDR+R;
+	utim_udelay(60);
 }
 
 static void hs_wakeup(void)
 {
 	i2c_start();
 	
-	i2c_send_data(HUM_SENSOR_I2C_ADDR);
+	i2c_send_data(HS_I2C_ADDR);
 	
-	udelay(90);
+	utim_udelay(1500);
 	
 	i2c_stop();
 }
 
 static inline void i2c_wr_addr(void)
 {
-		I2C1->DR = HUM_SENSOR_I2C_ADDR;
+		I2C1->DR = HS_I2C_ADDR+W;
 		while(!(I2C1->SR1 & I2C_SR1_ADDR)) {
 			__NOP();
 		}
-		(void) I2C1->SR2;
+		(void)I2C1->SR2;
 }
 
 static void i2c_fetch_data_reg(uint8_t *flow_buff, uint8_t npkg) 
@@ -186,7 +183,7 @@ static void i2c_fetch_data_reg(uint8_t *flow_buff, uint8_t npkg)
 	}
 }
 
-static void read_package(uint8_t *buff, uint8_t n)
+static void read_target_package(uint8_t *buff, uint8_t n)
 {
 	if (NULL == buff) {
 		return;
@@ -199,16 +196,53 @@ static void read_package(uint8_t *buff, uint8_t n)
 
 	i2c_wr_addr();
 	i2c_send_data(HS_I2C_READ_REG_DATA);
-	i2c_send_data(0x00); // Start address
-	i2c_send_data(0x04); // 4 registers to read
+	i2c_send_data(HS_I2C_START_REG_DATA); // Start address
+	i2c_send_data(n-4); // load data only (humidity 2 bytes + temp 2 bytes)
 
 	i2c_stop();
+	
+	i2c_ack_enable();
 
 	i2c_start();
-
-	i2c_rd_addr();
 	
+	i2c_rd_addr();
+
 	i2c_fetch_data_reg(buff, n);
+
+	i2c_ack_disable();
+
+	i2c_stop();
+	
+	i2c_disable();
+}
+
+static void read_sys_package(uint8_t *buff, uint8_t n)
+{
+	if (NULL == buff) {
+		return;
+	}
+	i2c_enable();
+
+	hs_wakeup();
+	
+	i2c_start();
+
+	i2c_wr_addr();
+	i2c_send_data(0x03);
+	i2c_send_data(0x0A); // Start address
+	i2c_send_data(n-2-2); // - system bytes - crc
+
+	i2c_stop();
+	
+	i2c_ack_enable();
+
+	i2c_start();
+	
+	i2c_rd_addr();
+
+	i2c_fetch_data_reg(buff, n);
+
+	i2c_ack_disable();
 
 	i2c_stop();
 	
@@ -238,7 +272,7 @@ static uint16_t concat_bytes(uint8_t a, uint8_t b)
 	return (uint16_t)((a) | (b << 8));
 }
 
-static inline bool crc_cmp(struct hum_temp_package *package)
+static inline bool crc_check(struct hum_temp_package *package)
 {
 	uint8_t pkg_valid_data[]= {
 		package->func_code,
@@ -250,7 +284,7 @@ static inline bool crc_cmp(struct hum_temp_package *package)
 	};
 	
 	/* store 8 bit high and 8 bit low at 16 bit crc variable */
-	uint16_t crc_fetched = 	concat_bytes(package->crc_high, package->crc_low);
+	uint16_t crc_fetched  = concat_bytes(package->crc_high, package->crc_low);
 	uint16_t crc_computed = crc16(pkg_valid_data, sizeof(pkg_valid_data));
 	
 	bool ret = (crc_computed == crc_fetched) ? true : false;
