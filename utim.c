@@ -33,9 +33,9 @@ static inline void utim_enable(void)
 
 static inline void utim_disable(void)
 {
+	NVIC_DisableIRQ(UT_NVIC_IRQ);	
 	ut_regs.timer_base->CR1 &= ~(UT_TIM_CR1_CEN);	
 	ut_regs.timer_base->DIER &= ~(UT_TIM_DIER_UIE);	
-	NVIC_DisableIRQ(UT_NVIC_IRQ);	
 }
 
 static inline void utim_clean_irq_flag(void)
@@ -48,35 +48,50 @@ static inline bool utim_is_irq(void)
 	return (ut_regs.timer_base->SR & UT_TIM_SR_UIF) ? true : false;
 }
 
-static void utim_start(void)
+static void utim_start(uint32_t us)
 {
+	utim_set_timeout(us);
 	utim_enable();
 }
 
-static void utim_stop(void)
+static inline void utim_stop(void)
 {
-	utim_enable();
+	utim_disable();
 }
 
-void utim_init(uTimer *ut, uint32_t us)
+void utim_init(uTimer *ut)
 {
 	ut->start = &utim_start;
 	ut->stop = &utim_stop;
 	
 	utim_clock_enable();
-	utim_set_timeout(us);
 	utim_disable();
 }
 
-volatile bool ut_flag = false;
-volatile uint32_t ucnt_global = 0;
+void utim_udelay(uint32_t us)
+{
+	ut_global_flag = true;
+	const uint32_t extention = 10;
+	const uint32_t factor = us/extention;
+
+	unsigned int us_cnt = 0;
+
+	utim_start(extention);	
+	do {
+		while(ut_global_flag) {
+			__NOP();
+		}
+		ut_global_flag = true;
+	}while(++us_cnt < factor);
+	
+	utim_stop();
+}
 
 /* Handler triggers every N seconds */
 void TIM2_IRQHandler(void)
 {
-
 	if (utim_is_irq()) {
+		ut_global_flag = false;
 		utim_clean_irq_flag();
-		ucnt_global++;
 	}
 }

@@ -17,7 +17,7 @@
 #define UT_NVIC_IRQ TIM2_IRQn
 
 typedef struct UTimer {
-	void (*start)(void);
+	void (*start)(uint32_t us);
 	void (*stop)(void);
 }uTimer;
 
@@ -31,8 +31,7 @@ static struct utimer_regs ut_regs = {
 	.timer_base = TIM2
 };
 
-extern volatile bool ut_flag;
-extern volatile uint32_t ucnt_global;
+static volatile bool ut_global_flag = false;
 
-void utim_init(uTimer *ut, uint32_t us);
-void udelay(uint32_t us);
+void utim_init(uTimer *ut);
+void utim_udelay(uint32_t us);
