@@ -315,9 +315,19 @@ static bool get_hum_temp(unsigned int *hum_temp)
 	return true;
 }
 
-	hum_temp[0] = humidity;	hum_temp[1] = temperature;
+static bool make_probe(void)
+{
+	uint8_t dev_id_pckg[5];
+	read_sys_package(dev_id_pckg, (sizeof(dev_id_pckg)));
 	
-	return 0;
+	uint8_t dev_id = (dev_id_pckg[2]);
+
+	if ((dev_id <= 0) || (dev_id == 0xFF)) {
+		return false;
+	}
+	
+	utim_udelay(3000);
+	return true;
 }
 
 void hs_init(HumSensor *chip)
@@ -326,6 +336,7 @@ void hs_init(HumSensor *chip)
 	i2c_init();
 	
 	chip->hs_get_hum_temp = &get_hum_temp;
+	chip->probe = &make_probe;
 }
 
 
